@@ -9,11 +9,11 @@ if (Test-Path output.txt) {
 # Recorrer cada archivo .php
 foreach ($file in $files) {
     # Agregar el nombre del archivo al output.txt
-    "archivo: $($file.Name)`r`n``````php" | Out-File output.txt -Append
+    "archivo: $($file.Name)`r`n``````php" | Out-File output.txt -Encoding utf8 -Append
 
     # Agregar el contenido del archivo .php al output.txt
-    Get-Content $file.FullName | Out-File output.txt -Append
+    Get-Content $file.FullName -Encoding utf8 | Out-File output.txt -Encoding utf8 -Append
 
     # Agregar el final del bloque al output.txt
-    "``````" | Out-File output.txt -Append
+    "``````" | Out-File output.txt -Encoding utf8 -Append
 }
