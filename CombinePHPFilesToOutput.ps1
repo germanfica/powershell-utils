@@ -16,10 +16,11 @@ foreach ($file in $files) {
     $stream.WriteLine("archivo: $($file.Name)`r`n``````php")
 
     # Agregar el contenido del archivo .php al output.txt
-    $content = Get-Content $file.FullName -Encoding utf8
-    foreach ($line in $content) {
-        $stream.WriteLine($line)
+    $reader = New-Object System.IO.StreamReader $file.FullName, $utf8WithoutBom
+    while($reader.Peek() -ge 0) {
+        $stream.WriteLine($reader.ReadLine())
     }
+    $reader.Close()
 
     # Agregar el final del bloque al output.txt
     $stream.WriteLine("``````")
