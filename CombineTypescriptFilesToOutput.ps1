@@ -12,6 +12,11 @@ $stream = New-Object System.IO.StreamWriter "output.txt", $true, $utf8WithoutBom
 
 # Recorrer cada archivo .ts
 foreach ($file in $files) {
+    # Ignorar archivos que terminan en .spec.ts
+    if ($file.Name -like "*.spec.ts") {
+        continue
+    }
+
     # Agregar el nombre del archivo al output.txt
     $stream.WriteLine("archivo: $($file.Name)`r`n``````typescript")
 
