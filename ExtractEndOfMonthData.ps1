@@ -1,35 +1,42 @@
-# Leer las líneas del archivo de entrada
-$lines = Get-Content -Path "input.txt"
+# Leer el archivo de entrada línea por línea
+$lines = Get-Content "input.txt"
 
-# Inicializar una lista vacía para almacenar las líneas de fin de mes
-$endOfMonthLines = @()
+# Inicializar un array vacío para almacenar los precios de fin de mes
+$endOfMonthPrices = @()
 
-# Recorrer cada línea del archivo
+# Iterar a través de cada línea del archivo
 foreach ($line in $lines) {
-    # Dividir la línea en partes utilizando el carácter de tabulación como delimitador
-    $parts = $line -split "\t"
+    # Dividir la línea en campos basado en el tabulador
+    $fields = $line -split "\t"
+    
+    # Extraer la fecha y el precio
+    $date = $fields[0]
+    $price = $fields[1]
+    
+    # Convertir la fecha a un objeto DateTime
+    $dateObj = [datetime]::ParseExact($date, "dd/MM/yyyy", $null)
+    
+    # Determinar el último día del mes para esa fecha
+    # $lastDayOfMonth = (Get-Date $dateObj).AddMonths(1).AddDays(-((Get-Date $dateObj).Day))
+    # Obtener el último día del mes
+    $lastDayOfMonth = [System.DateTime]::DaysInMonth($dateObj.Year, $dateObj.Month)
 
-    # Obtener la fecha y el precio de las partes
-    $date = $parts[0]
-    $price = $parts[1]
+    # Crear un nuevo objeto DateTime para el último día del mes
+    $dateWithLastDayOfMonth = New-Object System.DateTime($dateObj.Year, $dateObj.Month, $lastDayOfMonth)
+    # Write-Host "Último día del mes" $dateObj $dateWithLastDayOfMonth
 
-    # Comprobar si la fecha corresponde al final del mes
-    $day = [int]($date -split "/")[0]
-    $nextDay = $day + 1
-    $nextDate = $date -replace "^$day/", "$nextDay/"
-
-    if ($nextDate -notin $lines -split "\t") {
-        # Reemplazar la coma en el precio por un punto
+    # Verificar si la fecha es el último día del mes
+    if ($dateObj -eq $dateWithLastDayOfMonth) {
+        # Reemplazar la coma con un punto en el precio
         $price = $price -replace ",", "."
-
-        # Agregar la línea de fin de mes a la lista
-        Write-Host "Date" $date
-        $endOfMonthLines += "$date`t$price"
+        
+        # Añadir el precio al array
+        $endOfMonthPrices += "$date`t$price"
     }
 }
 
-# Guardar las líneas de fin de mes en el archivo de salida
-$endOfMonthLines | Out-File -FilePath "output.txt"
+# Guardar los precios de fin de mes en output.txt
+$endOfMonthPrices | Out-File "output.txt"
 
 # Imprimir un mensaje para indicar que la operación se ha completado
 Write-Host "El archivo output.txt ha sido creado con éxito."
