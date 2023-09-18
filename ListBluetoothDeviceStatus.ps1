@@ -23,12 +23,15 @@ foreach ($device in $allDevices) {
             "Error" { $failedDevices += $deviceInfo }
         }
 
-        # Determinar si el dispositivo está conectado o no
-        $deviceStatus = Get-PnpDeviceProperty -InstanceId $device.DeviceID -KeyName "DEVPKEY_Device_DevNodeStatus" | Select-Object -ExpandProperty Data
-        if ($deviceStatus -eq 0x1000a0) {
-            $connectedDevices += $deviceInfo
-        } else {
-            $disconnectedDevices += $deviceInfo
+        # Obtener la propiedad del dispositivo, si está disponible
+        $deviceProp = Get-PnpDeviceProperty -InstanceId $device.DeviceID -KeyName "DEVPKEY_Device_DevNodeStatus"
+        if ($deviceProp -and $deviceProp.Data) {
+            $deviceStatus = $deviceProp | Select-Object -ExpandProperty Data
+            if ($deviceStatus -eq 0x1000a0) {
+                $connectedDevices += $deviceInfo
+            } else {
+                $disconnectedDevices += $deviceInfo
+            }
         }
     }
 }
