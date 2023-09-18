@@ -15,6 +15,7 @@ foreach ($device in $allDevices) {
             "Name"         = $device.FriendlyName
             "Status"       = $device.Status
             "Manufacturer" = $device.Manufacturer
+            "ConnectionStatus" = "Unknown"  # Agregar un campo de estado de conexión
         }
 
         # Categorizar el dispositivo según su estado
@@ -29,22 +30,27 @@ foreach ($device in $allDevices) {
             $deviceStatus = $deviceProp | Select-Object -ExpandProperty Data
             if ($deviceStatus -eq 0x1000a0) {
                 $connectedDevices += $deviceInfo
+                $deviceInfo.ConnectionStatus = "Connected"
             } else {
                 $disconnectedDevices += $deviceInfo
+                $deviceInfo.ConnectionStatus = "Disconnected"
             }
+        } else {
+            # Aquí podrías registrar que la propiedad "Data" no está disponible
+            Write-Host "Warning: Could not obtain 'Data' property for device $($deviceInfo.Name)"
         }
     }
 }
 
 # Mostrar la información
 Write-Host "Dispositivos emparejados:"
-$pairedDevices | Format-Table -Property "DeviceID", "Name", "Status", "Manufacturer"
+$pairedDevices | Format-Table -Property "DeviceID", "Name", "Status", "Manufacturer", "ConnectionStatus"
 
 Write-Host "`nDispositivos que fallaron:"
-$failedDevices | Format-Table -Property "DeviceID", "Name", "Status", "Manufacturer"
+$failedDevices | Format-Table -Property "DeviceID", "Name", "Status", "Manufacturer", "ConnectionStatus"
 
 Write-Host "`nDispositivos conectados:"
-$connectedDevices | Format-Table -Property "DeviceID", "Name", "Status", "Manufacturer"
+$connectedDevices | Format-Table -Property "DeviceID", "Name", "Status", "Manufacturer", "ConnectionStatus"
 
 Write-Host "`nDispositivos no conectados:"
-$disconnectedDevices | Format-Table -Property "DeviceID", "Name", "Status", "Manufacturer"
+$disconnectedDevices | Format-Table -Property "DeviceID", "Name", "Status", "Manufacturer", "ConnectionStatus"
