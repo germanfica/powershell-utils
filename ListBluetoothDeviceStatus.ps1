@@ -6,6 +6,7 @@ $pairedDevices = @()
 $failedDevices = @()
 $connectedDevices = @()
 $disconnectedDevices = @()
+$unknownStatusDevices = @()  # Arreglo para dispositivos con estado desconocido
 
 # Filtrar y categorizar los dispositivos Bluetooth
 foreach ($device in $allDevices) {
@@ -36,8 +37,9 @@ foreach ($device in $allDevices) {
                 $deviceInfo.ConnectionStatus = "Disconnected"
             }
         } else {
-            # Aquí podrías registrar que la propiedad "Data" no está disponible
+            # Registrar que la propiedad "Data" no está disponible
             Write-Host "Warning: Could not obtain 'Data' property for device $($deviceInfo.Name)"
+            $unknownStatusDevices += $deviceInfo  # Añadir al arreglo de dispositivos con estado desconocido
         }
     }
 }
@@ -54,3 +56,6 @@ $connectedDevices | Format-Table -Property "DeviceID", "Name", "Status", "Manufa
 
 Write-Host "`nDispositivos no conectados:"
 $disconnectedDevices | Format-Table -Property "DeviceID", "Name", "Status", "Manufacturer", "ConnectionStatus"
+
+Write-Host "`nDispositivos con estado desconocido:"
+$unknownStatusDevices | Format-Table -Property "DeviceID", "Name", "Status", "Manufacturer", "ConnectionStatus"
