@@ -1,5 +1,7 @@
 # Obtener todos los archivos .js en el directorio actual y subdirectorios, excluyendo node_modules
-$files = Get-ChildItem -Recurse -Filter *.js | Where-Object { $_.FullName -notmatch '\\node_modules\\' }
+$files = Get-ChildItem -Recurse -Filter *.js |
+Where-Object { $_.FullName -notmatch '\\node_modules\\' } |
+Where-Object { $_.FullName -notmatch '\\dist\\' }
 
 # Eliminar el archivo output.txt si ya existe
 if (Test-Path output.txt) {
