@@ -1,3 +1,30 @@
+# ⚠️ AVISO IMPORTANTE SI FALLA EL ATTACH
+# ============================================================================
+# AVISO IMPORTANTE SI FALLA EL ATTACH
+# ============================================================================
+
+Write-Host ""
+Write-Host "══════════════════════════════════════════════════════════════════════" -ForegroundColor Yellow
+Write-Host " ADVERTENCIA: Problemas al hacer ATTACH en 'C:\Program Files'" -ForegroundColor Yellow
+Write-Host "══════════════════════════════════════════════════════════════════════" -ForegroundColor Yellow
+Write-Host ""
+Write-Host " 'C:\Program Files' es una zona protegida por Windows." -ForegroundColor Yellow
+Write-Host " Puede causar errores como 'Access Denied' incluso con permisos correctos." -ForegroundColor Yellow
+Write-Host ""
+Write-Host " SOLUCIÓN RECOMENDADA:" -ForegroundColor Cyan
+Write-Host "  Mover los archivos .mdf y .ldf a una ruta menos protegida, por ejemplo:" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "     C:\SQLData\<DatabaseName>.mdf" -ForegroundColor White
+Write-Host "     C:\SQLData\<DatabaseName>.ldf" -ForegroundColor White
+Write-Host ""
+Write-Host " Luego hacé el 'Attach' desde SSMS o con T-SQL directamente." -ForegroundColor Cyan
+Write-Host "══════════════════════════════════════════════════════════════════════" -ForegroundColor Yellow
+Write-Host ""
+
+# ============================================================================
+# CONFIGURACIÓN DE RUTAS Y PERMISOS
+# ============================================================================
+
 $sourcePath = "C:\Program Files\Microsoft SQL Server\MSSQL16.GERMA\MSSQL\DATA"
 $targetPath = "C:\Program Files\Microsoft SQL Server\MSSQL16.GERMA\MSSQL\OLD_DATA"
 
