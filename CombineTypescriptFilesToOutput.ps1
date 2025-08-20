@@ -1,5 +1,5 @@
 # Obtener todos los archivos .ts en el directorio actual y subdirectorios
-$files = Get-ChildItem -Recurse -Filter *.ts
+$files = Get-ChildItem -Recurse -Filter *.ts | Where-Object { $_.FullName -notmatch '\\node_modules\\' }
 
 # Eliminar el archivo output.txt si ya existe
 if (Test-Path output.txt) {
