@@ -29,6 +29,10 @@ const fail = (msg) => {
 
 const censorIpsInText = (text) => text.replace(/\b(\d{1,3}\.){3}\d{1,3}\b/g, "x.x.x.x");
 
+const isIPv6 = (ip) => ip.includes(":");
+
+/* ---------------- args ---------------- */
+
 const parseArgs = (argv) => {
   const opts = {
     include: [],
@@ -91,7 +95,7 @@ Usage:
 Options:
   --include a.exe,b.exe   Only consider these processes
   --exclude a.exe,b.exe   Ignore these processes
-  --censor-ip             Mask IP addresses in output
+  --censor-ip             Mask IPv4 addresses in output
   help, -h, --help        Show this help
   version, -v, --version Show version
 
@@ -119,9 +123,25 @@ const parseNetstat = (out) => {
     if (!/^\d+$/.test(p[4])) return;
 
     const [, , remote, , pid] = p;
-    const [rip, rport] = remote.split(":");
+
+    let rip, rport;
+
+    // IPv6: [addr]:port
+    if (remote.startsWith("[")) {
+      const m = remote.match(/^\[(.+)]:(\d+)$/);
+      if (!m) return;
+      rip = m[1];
+      rport = m[2];
+    } else {
+      // IPv4: addr:port
+      const parts = remote.split(":");
+      if (parts.length !== 2) return;
+      rip = parts[0];
+      rport = parts[1];
+    }
 
     if (!rip || rip === "0.0.0.0" || rip === "*") return;
+    if (!/^\d+$/.test(rport)) return;
 
     rows.push({ pid, rip, rport });
   });
@@ -175,11 +195,17 @@ const main = async () => {
   const ips = uniq(filtered.map((r) => r.rip));
   const ports = uniq(filtered.map((r) => r.rport));
 
+  const ipv4 = ips.filter((ip) => !isIPv6(ip));
+  const ipv6 = ips.filter((ip) => isIPv6(ip));
+
   let filter = "tcp.flags.syn == 1";
   const clauses = [];
 
-  if (ips.length)
-    clauses.push(`ip.addr == ${ips.join(" || ip.addr == ")}`);
+  if (ipv4.length)
+    clauses.push(`ip.addr == ${ipv4.join(" || ip.addr == ")}`);
+
+  if (ipv6.length)
+    clauses.push(`ipv6.addr == ${ipv6.join(" || ipv6.addr == ")}`);
 
   if (ports.length)
     clauses.push(`tcp.port == ${ports.join(" || tcp.port == ")}`);
