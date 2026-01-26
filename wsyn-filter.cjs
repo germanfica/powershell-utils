@@ -169,13 +169,13 @@ const main = async () => {
   const clauses = [];
 
   if (ips.length)
-    clauses.push(`ip.addr == ${ips.join(" or ip.addr == ")}`);
+    clauses.push(`ip.addr == ${ips.join(" || ip.addr == ")}`);
 
   if (ports.length)
-    clauses.push(`tcp.port == ${ports.join(" or tcp.port == ")}`);
+    clauses.push(`tcp.port == ${ports.join(" || tcp.port == ")}`);
 
   if (clauses.length) {
-    filter += " and not (" + clauses.join(" or ") + ")";
+    filter += " && !(" + clauses.join(" || ") + ")";
   }
 
   console.log("\nGenerated Wireshark filter:\n");
