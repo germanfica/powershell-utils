@@ -179,7 +179,7 @@ const main = async () => {
   }
 
   console.log("\nGenerated Wireshark filter:\n");
-  console.log(filter);
+  console.log(String(filter));
 };
 
 main().catch((err) => {
