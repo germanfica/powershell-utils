@@ -21,6 +21,12 @@ const csv = (v) =>
 
 const uniq = (arr) => [...new Set(arr)];
 
+const fail = (msg) => {
+  console.error(`Error: ${msg}`);
+  console.error("Run with --help for usage information.");
+  process.exit(1);
+};
+
 const parseArgs = (argv) => {
   const opts = {
     include: [],
@@ -30,18 +36,16 @@ const parseArgs = (argv) => {
   };
 
   for (let i = 2; i < argv.length; i++) {
-    const a = argv[i].toLowerCase();
+    const raw = argv[i];
+    const a = raw.toLowerCase();
 
-    if (
-      a === "help" ||
-      a === "--help" ||
-      a === "-h" ||
-      a === "-help"
-    ) {
+    // help
+    if (a === "help" || a === "--help" || a === "-h" || a === "-help") {
       opts.help = true;
       continue;
     }
 
+    // version
     if (
       a === "version" ||
       a === "--version" ||
@@ -53,14 +57,19 @@ const parseArgs = (argv) => {
     }
 
     if (a === "--include") {
+      if (!argv[i + 1]) fail("Missing value for --include.");
       opts.include = csv(argv[++i]);
       continue;
     }
 
     if (a === "--exclude") {
+      if (!argv[i + 1]) fail("Missing value for --exclude.");
       opts.exclude = csv(argv[++i]);
       continue;
     }
+
+    // unknown flag or argument
+    fail(`Unknown argument '${raw}'.`);
   }
 
   return opts;
@@ -68,23 +77,23 @@ const parseArgs = (argv) => {
 
 const printHelp = () => {
   console.log(`
-Uso:
-  wsyn-filter [opciones]
+Usage:
+  wsyn-filter [options]
 
-Opciones:
-  --include a.exe,b.exe   Solo considera estos procesos
-  --exclude a.exe,b.exe   Ignora estos procesos
-  help, -h, --help        Muestra esta ayuda
-  version, -v, --version Muestra la version
+Options:
+  --include a.exe,b.exe   Only consider these processes
+  --exclude a.exe,b.exe   Ignore these processes
+  help, -h, --help        Show this help
+  version, -v, --version Show version
 
-Ejemplos:
+Examples:
   wsyn-filter help
   wsyn-filter --exclude chrome.exe,spotify.exe
   wsyn-filter --include discord.exe
   wsyn-filter --include chrome.exe --exclude updater.exe
 
-Salida:
-  Display filter de Wireshark basado en:
+Output:
+  Wireshark display filter based on:
     tcp.flags.syn == 1
 `.trim());
 };
@@ -169,7 +178,7 @@ const main = async () => {
     filter += " and not (" + clauses.join(" or ") + ")";
   }
 
-  console.log("\nFiltro Wireshark generado:\n");
+  console.log("\nGenerated Wireshark filter:\n");
   console.log(filter);
 };
 
