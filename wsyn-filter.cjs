@@ -27,10 +27,13 @@ const fail = (msg) => {
   process.exit(1);
 };
 
+const censorIpsInText = (text) => text.replace(/\b(\d{1,3}\.){3}\d{1,3}\b/g, "x.x.x.x");
+
 const parseArgs = (argv) => {
   const opts = {
     include: [],
     exclude: [],
+    censorIp: false,
     help: false,
     version: false,
   };
@@ -68,6 +71,11 @@ const parseArgs = (argv) => {
       continue;
     }
 
+    if (a === "--censor-ip") {
+      opts.censorIp = true;
+      continue;
+    }
+
     // unknown flag or argument
     fail(`Unknown argument '${raw}'.`);
   }
@@ -83,6 +91,7 @@ Usage:
 Options:
   --include a.exe,b.exe   Only consider these processes
   --exclude a.exe,b.exe   Ignore these processes
+  --censor-ip             Mask IP addresses in output
   help, -h, --help        Show this help
   version, -v, --version Show version
 
@@ -91,6 +100,7 @@ Examples:
   wsyn-filter --exclude chrome.exe,spotify.exe
   wsyn-filter --include discord.exe
   wsyn-filter --include chrome.exe --exclude updater.exe
+  wsyn-filter --exclude chrome.exe --censor-ip
 
 Output:
   Wireshark display filter based on:
@@ -178,8 +188,12 @@ const main = async () => {
     filter += " && !(" + clauses.join(" || ") + ")";
   }
 
+  let output = filter;
+
+  if (opts.censorIp) output = censorIpsInText(output);
+
   console.log("\nGenerated Wireshark filter:\n");
-  console.log(String(filter));
+  console.log(output);
 };
 
 main().catch((err) => {
