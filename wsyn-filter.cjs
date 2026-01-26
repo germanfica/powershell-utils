@@ -6,6 +6,8 @@ const { promisify } = require("util");
 
 const execAsync = promisify(exec);
 
+const VERSION = "0.1.0";
+
 const run = (cmd) =>
   execAsync(cmd, { windowsHide: true }).then((r) => r.stdout);
 
@@ -23,15 +25,68 @@ const parseArgs = (argv) => {
   const opts = {
     include: [],
     exclude: [],
+    help: false,
+    version: false,
   };
 
   for (let i = 2; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === "--include") opts.include = csv(argv[++i]);
-    if (a === "--exclude") opts.exclude = csv(argv[++i]);
+    const a = argv[i].toLowerCase();
+
+    if (
+      a === "help" ||
+      a === "--help" ||
+      a === "-h" ||
+      a === "-help"
+    ) {
+      opts.help = true;
+      continue;
+    }
+
+    if (
+      a === "version" ||
+      a === "--version" ||
+      a === "-v" ||
+      a === "-version"
+    ) {
+      opts.version = true;
+      continue;
+    }
+
+    if (a === "--include") {
+      opts.include = csv(argv[++i]);
+      continue;
+    }
+
+    if (a === "--exclude") {
+      opts.exclude = csv(argv[++i]);
+      continue;
+    }
   }
 
   return opts;
+};
+
+const printHelp = () => {
+  console.log(`
+Uso:
+  wsyn-filter [opciones]
+
+Opciones:
+  --include a.exe,b.exe   Solo considera estos procesos
+  --exclude a.exe,b.exe   Ignora estos procesos
+  help, -h, --help        Muestra esta ayuda
+  version, -v, --version Muestra la version
+
+Ejemplos:
+  wsyn-filter help
+  wsyn-filter --exclude chrome.exe,spotify.exe
+  wsyn-filter --include discord.exe
+  wsyn-filter --include chrome.exe --exclude updater.exe
+
+Salida:
+  Display filter de Wireshark basado en:
+    tcp.flags.syn == 1
+`.trim());
 };
 
 /* ------------- netstat parsing ---------- */
@@ -44,9 +99,9 @@ const parseNetstat = (out) => {
     if (p.length < 5) return;
     if (!/^\d+$/.test(p[4])) return;
 
-    const [proto, local, remote, , pid] = p;
-
+    const [, , remote, , pid] = p;
     const [rip, rport] = remote.split(":");
+
     if (!rip || rip === "0.0.0.0" || rip === "*") return;
 
     rows.push({ pid, rip, rport });
@@ -71,6 +126,16 @@ const getProcessName = async (pid) => {
 const main = async () => {
   const opts = parseArgs(process.argv);
 
+  if (opts.version) {
+    console.log(VERSION);
+    process.exit(0);
+  }
+
+  if (opts.help) {
+    printHelp();
+    process.exit(0);
+  }
+
   const netstatOut = await run("netstat -ano");
   const conns = parseNetstat(netstatOut);
 
@@ -79,7 +144,6 @@ const main = async () => {
   for (const c of conns) {
     const name = await getProcessName(c.pid);
     if (!name) continue;
-
     resolved.push({ ...c, name });
   }
 
@@ -93,7 +157,6 @@ const main = async () => {
   const ports = uniq(filtered.map((r) => r.rport));
 
   let filter = "tcp.flags.syn == 1";
-
   const clauses = [];
 
   if (ips.length)
@@ -110,4 +173,7 @@ const main = async () => {
   console.log(filter);
 };
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
