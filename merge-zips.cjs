@@ -11,7 +11,7 @@ const { promises: fsp } = fs;
 const printHelp = () => {
   console.log(`
 Uso:
-  node merge-zips.cjs --dir <carpeta> --out <salida> [--prefix <texto>] [--conflict overwrite|skip|rename|error] [--no-recursive] [--keep-temp]
+  node merge-zips.cjs --dir <carpeta> --out <salida> [--prefix <texto>] [--conflict overwrite|skip|rename|error] [--no-recursive] [--keep-temp] [--keep-zips]
 
 Ejemplos:
   node merge-zips.cjs --dir . --out ./merged
@@ -28,6 +28,7 @@ const parseArgs = (argv) => {
     recursive: true,
     conflict: 'overwrite',
     keepTemp: false,
+    deleteZips: true,
     help: false,
   };
 
@@ -40,6 +41,7 @@ const parseArgs = (argv) => {
     else if (arg === '--conflict') args.conflict = argv[++i] || 'overwrite';
     else if (arg === '--no-recursive') args.recursive = false;
     else if (arg === '--keep-temp') args.keepTemp = true;
+    else if (arg === '--keep-zips') args.deleteZips = false;
     else if (arg === '--help' || arg === '-h') args.help = true;
     else throw new Error(`Argumento no reconocido: ${arg}`);
   }
@@ -211,6 +213,10 @@ const extractZip = async (zipPath, destDir) => {
   await run('unzip', ['-qq', '-o', zipPath, '-d', destDir]);
 };
 
+const deleteZip = async (zipPath) => {
+  await fsp.unlink(zipPath);
+};
+
 const processFamily = async (family, files, options, singleFamily) => {
   const safeFamily = toSafeName(family);
   const finalDir = singleFamily ? options.out : path.join(options.out, safeFamily);
@@ -235,6 +241,11 @@ const processFamily = async (family, files, options, singleFamily) => {
 
       console.log(`[${i + 1}/${files.length}] Merge ${item.fileName}`);
       await mergeDirectory(tempExtractDir, finalDir, options.conflict);
+
+      if (options.deleteZips) {
+        console.log(`[${i + 1}/${files.length}] Borrando ${item.fileName}`);
+        await deleteZip(item.zipPath);
+      }
     }
   } finally {
     if (!options.keepTemp) {
