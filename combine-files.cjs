@@ -164,6 +164,8 @@ const writeCombinedOutput = async ({ files, outFile, showRelative, langMode }) =
   await close();
 };
 
+const isHelpArg = (arg) => arg === "help" || arg === "-help" || arg === "-h" || arg === "--help";
+
 const parseArgs = (argv) => {
   const args = argv.slice(2);
   const opts = {
@@ -181,7 +183,7 @@ const parseArgs = (argv) => {
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
 
-    if (a === "-h" || a === "--help") {
+    if (isHelpArg(a)) {
       opts.help = true;
       continue;
     }
@@ -270,9 +272,11 @@ Opciones:
                             o X lo fuerza fijo (ej: "text", "python")
   --relative                En "archivo:" escribe ruta relativa (en vez del nombre del archivo)
   --pick                    Modo interactivo (elige items del directorio actual)
-  -h, --help                Ayuda
+  help, -help, -h, --help   Muestra esta ayuda
 
 Ejemplos:
+  node combine-files.cjs help
+  node combine-files.cjs -help
   node combine-files.cjs
   node combine-files.cjs src shared/util.py --ext py
   node combine-files.cjs packages/app packages/lib --ext js,ts --relative -o combined.txt
