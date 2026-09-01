@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// Angular component tree generator v2.
+// Angular component tree generator v3.
 
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
@@ -30,7 +30,7 @@ const parseArguments = (argumentsList) => {
     color: Boolean(process.stdout.isTTY && !process.env.NO_COLOR),
     output: null,
     root: 'src/app',
-    unicode: false,
+    unicode: true,
   };
 
   for (let index = 0; index < argumentsList.length; index += 1) {
@@ -38,6 +38,8 @@ const parseArguments = (argumentsList) => {
 
     if (argument === '--no-color') {
       options.color = false;
+    } else if (argument === '--ascii') {
+      options.unicode = false;
     } else if (argument === '--unicode') {
       options.unicode = true;
     } else if (argument === '--output' || argument === '-o') {
@@ -46,12 +48,12 @@ const parseArguments = (argumentsList) => {
     } else if (!argument.startsWith('-')) {
       options.root = argument;
     } else {
-      throw new Error(`OpciÃ³n desconocida: ${argument}`);
+      throw new Error(`Opción desconocida: ${argument}`);
     }
   }
 
   if (options.output && !path.extname(options.output)) {
-    throw new Error('El archivo de salida debe tener una extensiÃ³n, por ejemplo .txt');
+    throw new Error('El archivo de salida debe tener una extensión, por ejemplo .txt');
   }
 
   return options;
@@ -178,7 +180,7 @@ const fileDescription = (filename) => {
 };
 
 const getTreeSymbols = (unicode) => unicode
-  ? { branch: 'â”œâ”€â”€ ', last: 'â””â”€â”€ ', line: 'â”‚   ', separator: ' Â· ' }
+  ? { branch: '├── ', last: '└── ', line: '│   ', separator: ' - ' }
   : { branch: '|-- ', last: '`-- ', line: '|   ', separator: ' - ' };
 
 const renderComponent = (component, prefix, isLast, colorEnabled, symbols) => {
@@ -251,7 +253,7 @@ const createReport = (rootPath, components, colorEnabled, unicode) => {
 
   return [
     '',
-    unicode ? `â—† ${title}` : `== ${title} ==`,
+    `== ${title} ==`,
     `  ${paint(colorEnabled, 'dim', `${pluralize(components.length)} encontrados`)}`,
     '',
     rootLabel,
@@ -266,7 +268,7 @@ const main = async () => {
   const stat = await fs.stat(rootPath).catch(() => null);
 
   if (!stat?.isDirectory()) {
-    throw new Error(`No se encontrÃ³ el directorio: ${rootPath}`);
+    throw new Error(`No se encontró el directorio: ${rootPath}`);
   }
 
   const files = await walk(rootPath);
