@@ -10,7 +10,7 @@ const readline = require("readline");
 const FENCE = "```";
 const DEFAULT_OUT = "output.txt";
 const DEFAULT_EXCLUDES = new Set(["node_modules", "dist"]);
-const DEFAULT_EXTS = new Set([]);
+const DEFAULT_EXTS = new Set([".js"]);
 const DEFAULT_SKIP_NAME_FRAGMENTS = [".spec.", ".test."]; // ej: foo.spec.js, foo.test.py, etc
 
 const EXT_TO_FENCE = {
@@ -166,6 +166,18 @@ const writeCombinedOutput = async ({ files, outFile, showRelative, langMode }) =
 
 const isHelpArg = (arg) => arg === "help" || arg === "-help" || arg === "-h" || arg === "--help";
 
+const isOptionArg = (arg) => typeof arg === "string" && arg.startsWith("-");
+
+const optionValue = (args, index, optionName) => {
+  const value = args[index + 1];
+
+  if (!value || isOptionArg(value)) {
+    throw new Error(`Falta el valor para ${optionName}.`);
+  }
+
+  return value;
+};
+
 const parseArgs = (argv) => {
   const args = argv.slice(2);
   const opts = {
@@ -180,8 +192,21 @@ const parseArgs = (argv) => {
     help: false,
   };
 
+  let positionalOnly = false;
+  let hasCustomExts = false;
+
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
+
+    if (!positionalOnly && a === "--") {
+      positionalOnly = true;
+      continue;
+    }
+
+    if (positionalOnly) {
+      opts.paths.push(a);
+      continue;
+    }
 
     if (isHelpArg(a)) {
       opts.help = true;
@@ -189,13 +214,13 @@ const parseArgs = (argv) => {
     }
 
     if (a === "-o" || a === "--out") {
-      opts.outFile = args[i + 1] || DEFAULT_OUT;
+      opts.outFile = optionValue(args, i, a);
       i++;
       continue;
     }
 
     if (a === "--exclude") {
-      const raw = args[i + 1] || "";
+      const raw = optionValue(args, i, a);
       i++;
       raw
         .split(",")
@@ -206,18 +231,26 @@ const parseArgs = (argv) => {
     }
 
     if (a === "--ext") {
-      const raw = args[i + 1] || "";
+      const raw = optionValue(args, i, a);
       i++;
       const exts = raw
         .split(",")
         .map(normalizeExt)
         .filter(Boolean);
-      if (exts.length) opts.exts = new Set(exts);
+
+      if (exts.length) {
+        if (!hasCustomExts) {
+          opts.exts.clear();
+          hasCustomExts = true;
+        }
+
+        exts.forEach((ext) => opts.exts.add(ext));
+      }
       continue;
     }
 
     if (a === "--skip-name") {
-      const raw = args[i + 1] || "";
+      const raw = optionValue(args, i, a);
       i++;
       const frags = raw
         .split(",")
@@ -229,7 +262,7 @@ const parseArgs = (argv) => {
 
     if (a === "--lang") {
       // --lang auto | none | javascript | python | text | ...
-      opts.langMode = args[i + 1] || "auto";
+      opts.langMode = optionValue(args, i, a);
       i++;
       continue;
     }
@@ -250,6 +283,27 @@ const parseArgs = (argv) => {
   return opts;
 };
 
+const resolveInputRoots = async (paths) => {
+  const roots = [];
+
+  for (const inputPath of paths) {
+    const absolutePath = path.resolve(process.cwd(), inputPath);
+    const st = await statSafe(absolutePath);
+
+    if (!st) {
+      throw new Error(`No existe la ruta de entrada: ${inputPath}`);
+    }
+
+    if (!st.isFile() && !st.isDirectory()) {
+      throw new Error(`La ruta de entrada no es un archivo ni una carpeta: ${inputPath}`);
+    }
+
+    roots.push(absolutePath);
+  }
+
+  return roots;
+};
+
 const printHelp = () => {
   console.log(
     `
@@ -260,18 +314,20 @@ Si NO pasas rutas:
   - combina desde el directorio actual (recursivo), ignorando node_modules/ y dist/
 
 Si pasas rutas:
-  - cada ruta puede ser carpeta (recursivo) o archivo (si matchea --ext)
+  - cada ruta separada por espacios puede ser carpeta (recursivo) o archivo (si matchea --ext)
+  - podés pasar todas las rutas que quieras, antes o después de las opciones
 
 Opciones:
   -o, --out <archivo>       Output (default: ${DEFAULT_OUT})
   --exclude <a,b,c>         Agrega nombres de carpetas a excluir (default: node_modules,dist)
-  --ext <js,ts,py,...>      Extensiones a incluir (default: js). Acepta con o sin punto.
+  --ext <js,ts,py,...>      Extensiones a incluir (default: js). Acepta con o sin punto y se puede repetir.
   --skip-name <a,b,c>       Excluye si el nombre del archivo contiene esos fragmentos
                             (default: ${DEFAULT_SKIP_NAME_FRAGMENTS.join(",")})
   --lang <auto|none|X>      Fence de markdown: "auto" detecta por extensión, "none" no pone lenguaje,
                             o X lo fuerza fijo (ej: "text", "python")
   --relative                En "archivo:" escribe ruta relativa (en vez del nombre del archivo)
   --pick                    Modo interactivo (elige items del directorio actual)
+  --                        Todo lo que sigue se interpreta como una ruta
   help, -help, -h, --help   Muestra esta ayuda
 
 Ejemplos:
@@ -280,6 +336,8 @@ Ejemplos:
   node combine-files.cjs
   node combine-files.cjs src shared/util.py --ext py
   node combine-files.cjs packages/app packages/lib --ext js,ts --relative -o combined.txt
+  node combine-files.cjs /home/germa/workspace/cienciaceleste/frontend /home/germa/workspace/cienciaceleste/api --ext ts
+  node combine-files.cjs "carpeta con espacios" api/src/server.ts --ext ts
   node combine-files.cjs --lang text --ext js,ts,py
   node combine-files.cjs --pick --ext js,ts
 `.trim()
@@ -356,7 +414,7 @@ const main = async () => {
     process.exit(0);
   }
 
-  let roots = opts.paths.length ? opts.paths : ["."];
+  let inputPaths = opts.paths.length ? opts.paths : ["."];
   const walkOpts = { excludes: opts.excludes, exts: opts.exts, skipNameFragments: opts.skipNameFragments };
 
   if (opts.pick && (!opts.paths || opts.paths.length === 0)) {
@@ -377,24 +435,25 @@ const main = async () => {
     const sel = parsePickSelection(input, items.length);
 
     if (sel === null) {
-      roots = ["."];
+      inputPaths = ["."];
     } else {
-      roots = sel.map((i) => items[i - 1].full);
+      inputPaths = sel.map((i) => items[i - 1].full);
     }
   }
 
+  const roots = await resolveInputRoots(inputPaths);
+  const outFile = path.resolve(process.cwd(), opts.outFile);
   const allFiles = [];
   for (const r of roots) {
-    const abs = path.resolve(process.cwd(), r);
-    const files = await walkForTargetFiles(abs, walkOpts);
+    const files = await walkForTargetFiles(r, walkOpts);
     allFiles.push(...files);
   }
 
-  const files = uniqSorted(allFiles);
+  const files = uniqSorted(allFiles).filter((filePath) => path.resolve(filePath) !== outFile);
 
   await writeCombinedOutput({
     files,
-    outFile: path.resolve(process.cwd(), opts.outFile),
+    outFile,
     showRelative: opts.showRelative,
     langMode: opts.langMode,
   });
