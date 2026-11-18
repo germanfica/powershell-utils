@@ -27,12 +27,12 @@ func main() {
 
 	flag.Parse()
 
-	if flag.NArg() != 1 {
+	if flag.NArg() == 0 {
 		flag.Usage()
 		os.Exit(2)
 	}
 
-	input := strings.TrimSpace(flag.Arg(0))
+	input := strings.TrimSpace(strings.Join(flag.Args(), " "))
 	input = strings.Trim(input, "\"'")
 
 	ext := strings.ToLower(filepath.Ext(input))
