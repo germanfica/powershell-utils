@@ -2,7 +2,7 @@
 package main
 
 import (
-	"bufio"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,66 +14,78 @@ func shellQuote(s string) string {
 }
 
 func main() {
-	var input string
+	model := flag.String("model", "large-v3", "Whisper model")
+	language := flag.String("language", "Japanese", "Audio language")
+	format := flag.String("format", "txt", "Output format: txt, srt, vtt, tsv, json, all")
 
-	if len(os.Args) > 1 {
-		input = strings.Join(os.Args[1:], " ")
-	} else {
-		fmt.Print("Ruta del video MP4: ")
-
-		scanner := bufio.NewScanner(os.Stdin)
-		if !scanner.Scan() {
-			fmt.Fprintln(os.Stderr, "Error: no se recibió una ruta.")
-			os.Exit(1)
-		}
-		input = scanner.Text()
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: %s [options] <video.mp4>\n\n", os.Args[0])
+		fmt.Fprintln(os.Stderr, "Generate FFmpeg and Whisper commands.")
+		fmt.Fprintln(os.Stderr, "\nOptions:")
+		flag.PrintDefaults()
 	}
 
-	input = strings.TrimSpace(input)
+	flag.Parse()
+
+	if flag.NArg() != 1 {
+		flag.Usage()
+		os.Exit(2)
+	}
+
+	input := strings.TrimSpace(flag.Arg(0))
 	input = strings.Trim(input, "\"'")
 
-	if input == "" {
-		fmt.Fprintln(os.Stderr, "Error: ruta vacía.")
-		os.Exit(1)
-	}
-
 	if !strings.EqualFold(filepath.Ext(input), ".mp4") {
-		fmt.Fprintln(os.Stderr, "Error: se requiere un archivo MP4.")
+		fmt.Fprintln(os.Stderr, "Error: expected an MP4 file.")
 		os.Exit(1)
 	}
 
-	input, err := filepath.Abs(input)
+	validFormats := map[string]bool{
+		"txt": true,
+		"srt": true,
+		"vtt": true,
+		"tsv": true,
+		"json": true,
+		"all": true,
+	}
+
+	if !validFormats[*format] {
+		fmt.Fprintln(os.Stderr, "Error: invalid output format.")
+		os.Exit(1)
+	}
+
+	var err error
+	input, err = filepath.Abs(input)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}
 
 	dir := filepath.Dir(input)
-	name := strings.TrimSuffix(filepath.Base(input), filepath.Ext(input))
-	wav := filepath.Join(dir, name+".wav")
+	base := strings.TrimSuffix(filepath.Base(input), filepath.Ext(input))
+	wav := filepath.Join(dir, base+".wav")
 
-	fmt.Println("\n1. Extraer audio WAV para Whisper\n")
-
+	fmt.Println("# 1. Extract audio")
 	fmt.Printf(
 		"ffmpeg -i %s \\\n"+
 			"  -vn -ac 1 -ar 16000 -c:a pcm_s16le \\\n"+
-			"  %s\n",
+			"  %s\n\n",
 		shellQuote(input),
 		shellQuote(wav),
 	)
 
-	fmt.Println("\n2. Transcribir japonés a texto con Whisper\n")
-
+	fmt.Println("# 2. Transcribe audio")
 	fmt.Printf(
 		"uv run whisper %s \\\n"+
-			"  --model large-v3 \\\n"+
-			"  --language Japanese \\\n"+
+			"  --model %s \\\n"+
+			"  --language %s \\\n"+
 			"  --task transcribe \\\n"+
-			"  --output_format txt \\\n"+
+			"  --output_format %s \\\n"+
 			"  --output_dir %s\n",
 		shellQuote(wav),
+		shellQuote(*model),
+		shellQuote(*language),
+		shellQuote(*format),
 		shellQuote(dir),
 	)
-
-	fmt.Printf("\nResultado: %s\n", filepath.Join(dir, name+".txt"))
 }
