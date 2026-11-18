@@ -19,7 +19,7 @@ func main() {
 	format := flag.String("format", "txt", "Output format: txt, srt, vtt, tsv, json, all")
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: %s [options] <video.mp4>\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s [options] <video.mp4|video.mkv>\n\n", os.Args[0])
 		fmt.Fprintln(os.Stderr, "Generate FFmpeg and Whisper commands.")
 		fmt.Fprintln(os.Stderr, "\nOptions:")
 		flag.PrintDefaults()
@@ -35,8 +35,9 @@ func main() {
 	input := strings.TrimSpace(flag.Arg(0))
 	input = strings.Trim(input, "\"'")
 
-	if !strings.EqualFold(filepath.Ext(input), ".mp4") {
-		fmt.Fprintln(os.Stderr, "Error: expected an MP4 file.")
+	ext := strings.ToLower(filepath.Ext(input))
+	if ext != ".mp4" && ext != ".mkv" {
+		fmt.Fprintln(os.Stderr, "Error: expected an MP4 or MKV file.")
 		os.Exit(1)
 	}
 
